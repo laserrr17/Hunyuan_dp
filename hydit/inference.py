@@ -147,6 +147,7 @@ def get_pipeline(args, vae, text_encoder, tokenizer, model, device, rank,
 
     # Handle DataParallel case
     if isinstance(pipeline.unet, torch.nn.DataParallel):
+        logger.debug("Model is wrapped with DataParallel")
         pipeline.unet = pipeline.unet.module
 
     pipeline = pipeline.to(device)
@@ -228,9 +229,11 @@ class End2End(object):
             logger.info(f"Loading torch model finished")
 
             if torch.cuda.device_count() > 1:
+                logger.info(f"Using {torch.cuda.device_count()} GPUs for DataParallel")
                 self.model = torch.nn.DataParallel(self.model)
-            self.model.to(self.device)
-
+                logger.info("Model wrapped with DataParallel")
+            else:
+                logger.info("Using single GPU")
         elif self.infer_mode == 'trt':
             from .modules.trt.hcf_model import TRTModel
 
