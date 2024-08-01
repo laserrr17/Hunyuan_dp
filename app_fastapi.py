@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from loguru import logger
 import uvicorn
 import random
+import asyncio
+import aiohttp
 
 app = FastAPI()
 
@@ -23,8 +25,9 @@ async def generate_image(request: PromptRequest):
     # 随机选择一个子进程的端口
     port = random.choice([8014, 8015])
     logger.info(f"Forwarding request to port {port}")
-    response = requests.post(f"http://127.0.0.1:{port}/generate_image", json=request.dict())
-    return response.json()
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f"http://127.0.0.1:{port}/generate_image", json=request.dict()) as response:
+            return await response.json()
 
 if __name__ == "__main__":
     ports_devices = [(8014, "2"), (8015, "3")]
