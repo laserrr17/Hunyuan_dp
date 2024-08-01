@@ -4,8 +4,11 @@ import time
 
 # 配置
 URL = "http://127.0.0.1:8013/generate_image"
-CONCURRENCY = 3  # 并发请求数量
-REQUESTS = 3 # 总请求数量
+CONCURRENCY = 10  # 并发请求数量
+REQUESTS = 20
+
+
+ # 总请求数量
 
 # 示例请求数据
 payload = {
