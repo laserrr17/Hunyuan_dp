@@ -6,7 +6,6 @@ from loguru import logger
 from hydit.config import get_args
 from hydit.inference import End2End
 import asyncio
-from PIL import Image
 
 app = FastAPI()
 
