@@ -4,15 +4,15 @@ import time
 
 # 配置
 URL = "http://127.0.0.1:8013/generate_image"
-CONCURRENCY = 10  # 并发请求数量
-REQUESTS = 20
+CONCURRENCY = 1  # 并发请求数量
+REQUESTS = 10
 
 
  # 总请求数量
 
 # 示例请求数据
 payload = {
-    "prompt": "制作一个GTA的宣传海报，人物是特朗普戴着墨镜",
+    "prompt": "一个人的手的照片",
     "output_path": "./output"
 }
 
