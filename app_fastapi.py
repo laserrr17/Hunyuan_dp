@@ -7,7 +7,7 @@ import asyncio
 from asyncio import Semaphore, Queue
 from pathlib import Path
 import random
-
+from mllm.dialoggen_demo import DialogGen
 
 app = FastAPI()
 
@@ -19,7 +19,7 @@ class ImageAdjustRequest(BaseModel):
     session_id: str
     prompt: str
 
-# 初始化共享计数器和信号量
+# Initialize semaphore and queue
 semaphore = Semaphore(3)
 request_queue = Queue()
 active_sessions = {}
@@ -30,19 +30,20 @@ async def inferencer():
     if not models_root_path.exists():
         raise ValueError(f"`models_root` not exists: {models_root_path}")
 
-    # Load models
+    # Load models including the enhancer
     gen = End2End(args, models_root_path)
     return args, gen
 
 @app.on_event("startup")
 async def startup_event():
-    global args, gen
+    global args, gen, dialoggen_model
+    dialoggen_model = DialogGen(model_path='./ckpts/dialoggen', args.load_4bit)
     args, gen = await inferencer()
     args.infer_steps = 20
     args.enhance = False
     args.sampler = 'dpmms'
     
-    # 启动处理任务
+    # Start the process queue task
     asyncio.create_task(process_queue())
 
 async def process_queue():
@@ -52,11 +53,11 @@ async def process_queue():
             request = req['request']
             response_future = req['response']
 
-            # 运行推理
+            # Run inference
             logger.info("Generating image with prompt: {}", request.prompt)
             height, width = args.image_size
 
-            # 生成随机种子
+            # Generate random seed
             random_seed = 42
 
             results = await asyncio.to_thread(gen.predict,
@@ -101,7 +102,7 @@ async def process_queue():
 @app.post("/generate_image")
 async def generate_image(request: PromptRequest):
     response_future = asyncio.get_event_loop().create_future()
-    session_id = str(random.randint(1000, 9999))  # 简单的 session id 生成
+    session_id = str(random.randint(1000, 9999))  # Simple session ID generation
     active_sessions[session_id] = {"prompt": request.prompt, "output_path": request.output_path}
     await request_queue.put({'request': request, 'response': response_future})
     result = await response_future
@@ -117,13 +118,23 @@ async def adjust_image(request: ImageAdjustRequest):
     session_data = active_sessions[session_id]
     session_prompt = session_data['prompt']
     session_output_path = session_data['output_path']
+    session_history = session_data.get('history', [])
 
-    updated_prompt = session_prompt + "基于之前的描述，请你把图片再调整一下" + request.prompt
-    active_sessions[session_id]['prompt'] = updated_prompt
+    # 确保 session_history 格式正确
+    if not isinstance(session_history, list):
+        session_history = []
 
-    new_request = PromptRequest(prompt=updated_prompt, output_path=session_output_path)
+    # 调用 dialoggen_model 直接生成增强的 prompt
+    enhanced_prompt, updated_history = dialoggen_model(prompt=request.prompt + active_sessions[session_id]['prompt'], return_history=True, history=session_history)
 
-    response_future = asyncio.get_event_loop().create_future()
+    # 更新 prompt 和 history
+    active_sessions[session_id]['prompt'] = enhanced_prompt
+    active_sessions[session_id]['history'] = updated_history
+
+    new_request = PromptRequest(prompt=enhanced_prompt, output_path=session_output_path)
+
+    # 使用 asyncio.get_running_loop() 以避免潜在问题
+    response_future = asyncio.get_running_loop().create_future()
     await request_queue.put({'request': new_request, 'response': response_future})
     return await response_future
 

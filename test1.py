@@ -6,7 +6,7 @@ base_url = "http://127.0.0.1:8013"
 # 生成初始图片的请求
 def test_generate_image():
     prompt_request = {
-        "prompt": "一个红色的苹果",
+        "prompt": "一个红苹果",
         "output_path": "./output_images"
     }
     response = httpx.post(f"{base_url}/generate_image", json=prompt_request, timeout=60.0)
@@ -43,10 +43,12 @@ def run_tests():
     session_id, image_paths = test_generate_image()
     if session_id:
         # 第一次调整图片
-        adjusted_image_paths = test_adjust_image(session_id, "把苹果改成绿色的")
+        adjusted_image_paths = test_adjust_image(session_id, "加一个苹果")
         # 第二次调整图片
         if adjusted_image_paths:
-            test_adjust_image(session_id, "在苹果旁边加一个荔枝")
+            test_adjust_image(session_id, "苹果变成绿色")
+        # 第三次调整图片
+        test_adjust_image(session_id, "加一个芒果")
 
 if __name__ == "__main__":
     run_tests()

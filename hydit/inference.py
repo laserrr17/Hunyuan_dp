@@ -98,6 +98,7 @@ def _to_tuple(val):
         raise ValueError(f"Invalid value: {val}")
     return val
 
+
 def get_pipeline(args, vae, text_encoder, tokenizer, model, device, rank,
                  embedder_t5, infer_mode, sampler=None):
     """
@@ -144,11 +145,6 @@ def get_pipeline(args, vae, text_encoder, tokenizer, model, device, rank,
                                        embedder_t5=embedder_t5,
                                        infer_mode=infer_mode,
                                        )
-
-    # Handle DataParallel case
-    if isinstance(pipeline.unet, torch.nn.DataParallel):
-        logger.debug("Model is wrapped with DataParallel")
-        pipeline.unet = pipeline.unet.module
 
     pipeline = pipeline.to(device)
 
@@ -227,13 +223,6 @@ class End2End(object):
 
             self.model.eval()
             logger.info(f"Loading torch model finished")
-
-            if torch.cuda.device_count() > 1:
-                logger.info(f"Using {torch.cuda.device_count()} GPUs for DataParallel")
-                self.model = torch.nn.DataParallel(self.model)
-                logger.info("Model wrapped with DataParallel")
-            else:
-                logger.info("Using single GPU")
         elif self.infer_mode == 'trt':
             from .modules.trt.hcf_model import TRTModel
 
@@ -267,6 +256,7 @@ class End2End(object):
         logger.info("==================================================")
         logger.info(f"                Model is ready.                  ")
         logger.info("==================================================")
+
     def load_torch_weights(self):
         load_key = self.args.load_key
         if self.args.dit_weight is not None:
